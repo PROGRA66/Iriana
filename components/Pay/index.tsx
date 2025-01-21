@@ -1,78 +1,117 @@
-"use client";
-import {
+"utilizar cliente";
+importar {
   MiniKit,
-  tokenToDecimals,
-  Tokens,
-  PayCommandInput,
-} from "@worldcoin/minikit-js";
+  tokenADecimales,
+  Fichas,
+  Entrada de comando de pago,
+} de "@worldcoin/minikit-js";
+importar { useState } de "react";
 
-const sendPayment = async () => {
-  try {
-    const res = await fetch(`/api/initiate-payment`, {
-      method: "POST",
+// Función para realizar el pago
+const sendPayment = async (wldAmount: número, usdcAmount: número) => {
+  intentar {
+    const res = await fetch(`/api/inicia-pago`, {
+      método: "POST",
     });
 
-    const { id } = await res.json();
+    const { id } = esperar res.json();
 
-    console.log(id);
-
-    const payload: PayCommandInput = {
-      reference: id,
-      to: "0x0c892815f0B058E69987920A23FBb33c834289cf", // Test address
-      tokens: [
+    carga útil constante: PayCommandInput = {
+      referencia: id,
+      to: "0xde6b6e1cddbfd1d94afc01957748c36c36f43af4", // Dirección de prueba
+      fichas: [
         {
-          symbol: Tokens.WLD,
-          token_amount: tokenToDecimals(0.5, Tokens.WLD).toString(),
+          símbolo: Tokens.WLD,
+          token_amount: tokenToDecimals(wldAmount, Tokens.WLD).toString(),
         },
         {
-          symbol: Tokens.USDCE,
-          token_amount: tokenToDecimals(0.1, Tokens.USDCE).toString(),
+          símbolo: Tokens.USDCE,
+          token_amount: tokenToDecimals(usdcAmount, Tokens.USDCE).toString(),
         },
       ],
-      description: "Watch this is a test",
+      Descripción: "Transacción de pago de prueba",
     };
-    if (MiniKit.isInstalled()) {
-      return await MiniKit.commandsAsync.pay(payload);
+
+    si (MiniKit.isInstalled()) {
+      devolver esperar MiniKit.commandsAsync.pay(payload);
     }
-    return null;
-  } catch (error: unknown) {
-    console.log("Error sending payment", error);
-    return null;
+    devuelve nulo;
+  } captura (error: desconocido) {
+    console.error("Error al enviar el pago", error);
+    devuelve nulo;
   }
 };
 
-const handlePay = async () => {
-  if (!MiniKit.isInstalled()) {
-    console.error("MiniKit is not installed");
-    return;
-  }
-  const sendPaymentResponse = await sendPayment();
-  const response = sendPaymentResponse?.finalPayload;
-  if (!response) {
-    return;
+// Función para manejar el proceso completo de pago
+const handlePay = async (wldAmount: número, usdcAmount: número) => {
+  si (!MiniKit.isInstalled()) {
+    console.error("MiniKit no está instalado");
+    devolver;
   }
 
-  if (response.status == "success") {
+  const sendPaymentResponse = await sendPayment(montowld, montousdc);
+  const respuesta = sendPaymentResponse?.finalPayload;
+  si (!respuesta) {
+    console.error("Pago fallido");
+    devolver;
+  }
+
+  si (respuesta.estado === "éxito") {
     const res = await fetch(`${process.env.NEXTAUTH_URL}/api/confirm-payment`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ payload: response }),
+      método: "POST",
+      encabezados: { "Content-Type": "application/json" },
+      cuerpo: JSON.stringify({ payload: respuesta }),
     });
-    const payment = await res.json();
-    if (payment.success) {
-      // Congrats your payment was successful!
-      console.log("SUCCESS!");
-    } else {
-      // Payment failed
-      console.log("FAILED!");
+
+    const pago = await res.json();
+    si (pago.éxito) {
+      console.log("¡Pago EXITOSO!");
+    } demás {
+      console.error("¡Pago FALLÓ!");
     }
   }
 };
 
-export const PayBlock = () => {
-  return (
-    <button className="bg-blue-500 p-4" onClick={handlePay}>
-      Pay
-    </button>
+// Componente de pago
+exportar const PayBlock = () => {
+  const [wldAmount, setWldAmount] = useState<número>(0.5);
+  const [usdcAmount, setUsdcAmount] = useState<número>(0.1);
+
+  devolver (
+    <div className="flex flex-col items-center p-4 bg-gray-100 sombra redondeada-md">
+      <h2 className="text-xl font-bold mb-4">Formulario de pago</h2>
+      <div className="mb-4">
+        <label htmlFor="wldAmount" className="bloque texto-pequeño fuente-media texto-gris-700">
+          Monto WLD:
+        </etiqueta>
+        <entrada
+          tipo="numero"
+          id="cantidadwld"
+          valor={wldCantidad}
+          onChange={(e) => setWldAmount(Number(e.target.value) || 0)}
+          mín="0"
+          className="mt-1 p-2 borde borde-gris-300 redondeado w-64"
+        />
+      </div>
+      <div className="mb-4">
+        <label htmlFor="usdcAmount" className="bloque texto-sm fuente-media texto-gris-700">
+          Monto USDCE:
+        </etiqueta>
+        <entrada
+          tipo="numero"
+          id="cantidad en dólares estadounidenses"
+          valor={cantidadusdc}
+          onChange={(e) => setUsdcAmount(Number(e.target.value) || 0)}
+          mín="0"
+          className="mt-1 p-2 borde borde-gris-300 redondeado w-64"
+        />
+      </div>
+      <botón
+        onClick={() => handlePay(montowld, montousdc)}
+        className="bg-blue-500 texto-blanco fuente-negrita py-2 px-4 redondeado pasar el mouse sobre:bg-blue-600"
+      >
+        Pagar
+      </botón>
+    </div>
   );
 };
