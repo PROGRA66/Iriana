@@ -1,79 +1,58 @@
 "use client";
-import {
-  MiniKit,
-  VerificationLevel,
-  ISuccessResult,
-  MiniAppVerifyActionErrorPayload,
-  IVerifyResponse,
-} from "@worldcoin/minikit-js";
-import { useCallback, useState } from "react";
+import { IDKitWidget, VerificationLevel } from '@worldcoin/idkit';
 
-export type VerifyCommandInput = {
-  action: string;
-  signal?: string;
-  verification_level?: VerificationLevel; // Default: Orb
-};
-
-const verifyPayload: VerifyCommandInput = {
-  action: "test-action", // This is your action ID from the Developer Portal
-  signal: "",
-  verification_level: VerificationLevel.Orb, // Orb | Device
-};
-
-export const VerifyBlock = () => {
-  const [handleVerifyResponse, setHandleVerifyResponse] = useState<
-    MiniAppVerifyActionErrorPayload | IVerifyResponse | null
-  >(null);
-
-  const handleVerify = useCallback(async () => {
-    if (!MiniKit.isInstalled()) {
-      console.warn("Tried to invoke 'verify', but MiniKit is not installed.");
-      return null;
-    }
-
-    const { finalPayload } = await MiniKit.commandsAsync.verify(verifyPayload);
-
-    // no need to verify if command errored
-    if (finalPayload.status === "error") {
-      console.log("Command error");
-      console.log(finalPayload);
-
-      setHandleVerifyResponse(finalPayload);
-      return finalPayload;
-    }
-
-    // Verify the proof in the backend
-    const verifyResponse = await fetch(`/api/verify`, {
+// Función para verificar la prueba (debes implementarla en el servidor)
+const verifyProof = async (proof) => {
+  // Llamada al servidor para verificar el proof
+  try {
+    const response = await fetch("/api/verify", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        payload: finalPayload as ISuccessResult, // Parses only the fields we need to verify
-        action: verifyPayload.action,
-        signal: verifyPayload.signal, // Optional
+        proof,
+        action: "testing-accion",
       }),
     });
 
-    // TODO: Handle Success!
-    const verifyResponseJson = await verifyResponse.json();
-
-    if (verifyResponseJson.status === 200) {
-      console.log("Verification success!");
-      console.log(finalPayload);
+    if (!response.ok) {
+      throw new Error("Error en la verificación del proof");
     }
 
-    setHandleVerifyResponse(verifyResponseJson);
-    return verifyResponseJson;
-  }, []);
+    const result = await response.json();
+    if (result.verified) {
+      console.log("Prueba verificada con éxito");
+      return result;
+    } else {
+      throw new Error("La verificación falló");
+    }
+  } catch (error) {
+    console.error("Error verificando el proof:", error);
+    throw error;
+  }
+};
 
+// Función que se llama después de la verificación exitosa
+const onSuccess = () => {
+  console.log("¡Verificación exitosa!");
+  // Aquí puedes agregar más lógica, como redirigir o mostrar un mensaje
+};
+
+export const WorldcoinVerify = () => {
   return (
-    <div>
-      <h1>Verify Block</h1>
-      <button className="bg-green-500 p-4" onClick={handleVerify}>
-        Test Verify
-      </button>
-      <span>{JSON.stringify(handleVerifyResponse, null, 2)}</span>
-    </div>
+    <IDKitWidget
+      app_id="app_2248679d8f07eb1b7eacd922f9a26a1e" // Tu ID de aplicación
+      action="testing-accion" // Acción que estás realizando
+      verification_level={VerificationLevel.Device} // Verificación de dispositivo
+      handleVerify={verifyProof} // Manejar la verificación del proof
+      onSuccess={onSuccess} // Acción después de la verificación exitosa
+    >
+      {({ open }) => (
+        <button onClick={open}>
+          Verificar con World ID
+        </button>
+      )}
+    </IDKitWidget>
   );
 };
